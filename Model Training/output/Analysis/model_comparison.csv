@@ -1,0 +1,5 @@
+Model,ROC-AUC (macro),F1 (macro),Precision (macro),Recall (macro),Hamming Loss,Meets Target
+DistilBERT,0.9849,0.6179,0.5576,0.7048,0.029706,✅
+RoBERTa,0.9839,0.6222,0.5282,0.767,0.031209,✅
+LinearSVC,0.9747,0.5401,0.5848,0.5142,0.02666,✅
+Logistic Regression,0.9746,0.4725,0.3415,0.8445,0.05016,✅
