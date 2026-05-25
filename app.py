@@ -429,15 +429,15 @@ with st.sidebar:
     st.markdown("**Model Info**")
     st.markdown(f"""
     <div class="metric-card" style="margin-bottom:8px;">
-        <div class="metric-val">0.9851</div>
+        <div class="metric-val">0.9849</div>
         <div class="metric-label">ROC-AUC (macro)</div>
     </div>
     <div class="metric-card" style="margin-bottom:8px;">
-        <div class="metric-val">0.6162</div>
+        <div class="metric-val">0.6179</div>
         <div class="metric-label">F1 (macro)</div>
     </div>
     <div class="metric-card" style="margin-bottom:8px;">
-        <div class="metric-val">0.0300</div>
+        <div class="metric-val">0.0297</div>
         <div class="metric-label">Hamming Loss</div>
     </div>
     """, unsafe_allow_html=True)
@@ -481,7 +481,7 @@ st.markdown("""
 <div class="app-header">
     <h1>🛡️ Auto-Moderator</h1>
     <p class="subtitle">Multi-label Toxicity Classifier — Jigsaw Dataset · 6 Categories</p>
-    <span class="badge">⚡ Powered by DistilBERT · ROC-AUC 0.9851 ✅</span>
+    <span class="badge">⚡ Powered by DistilBERT · ROC-AUC 0.9849 ✅</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -797,8 +797,8 @@ with tab3:
 
         st.markdown("**Model Performance Summary**")
         perf_data = {
-            "DistilBERT":        {"ROC-AUC": 0.9851, "F1": 0.6162, "Hamming": 0.0300},
-            "RoBERTa":           {"ROC-AUC": 0.9839, "F1": 0.6169, "Hamming": 0.0309},
+            "DistilBERT":        {"ROC-AUC": 0.9849, "F1": 0.6179, "Hamming": 0.0297},
+            "RoBERTa":           {"ROC-AUC": 0.9839, "F1": 0.6222, "Hamming": 0.0312},
             "LinearSVC":         {"ROC-AUC": 0.9747, "F1": 0.5401, "Hamming": 0.0267},
             "Logistic Regression": {"ROC-AUC": 0.9746, "F1": 0.4725, "Hamming": 0.0502},
         }
