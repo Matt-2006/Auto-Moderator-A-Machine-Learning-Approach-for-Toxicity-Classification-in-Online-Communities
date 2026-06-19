@@ -40,22 +40,14 @@ LABEL_DESC = {
     "identity_hate": "Hate speech targeting identity groups",
 }
 
-# Per-label thresholds tuned for class imbalance
-THRESHOLDS = {
-    "toxic":         0.40,
-    "severe_toxic":  0.30,
-    "obscene":       0.40,
-    "threat":        0.25,
-    "insult":        0.40,
-    "identity_hate": 0.25,
-}
-SUSPICIOUS_RATIO = 0.5
+# Uniform 0.5 threshold for all labels (consistent with training evaluation)
+THRESHOLD     = 0.5
+SUSPICIOUS_RATIO = 0.5   # suspicious if score >= 0.5 * 0.5 = 0.25
 
 MODEL_NAME = "distilbert-base-uncased"
 MAX_LEN    = 128
 DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Model checkpoint path — adjust as needed
 BASE_DIR   = os.environ.get(
     "MODEL_BASE_DIR",
     os.path.join(os.path.dirname(__file__), "models")
@@ -71,21 +63,17 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif;
 }
 
-/* Hide default streamlit header */
 #MainMenu, footer, header { visibility: hidden; }
 
-/* Overall background */
 .stApp {
     background: #0a0c14;
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background: #0f1120;
     border-right: 1px solid #1e2240;
 }
 
-/* Custom header banner */
 .app-header {
     background: linear-gradient(135deg, #0f1120 0%, #1a1f3a 50%, #0f1120 100%);
     border: 1px solid #2a3060;
@@ -132,7 +120,6 @@ section[data-testid="stSidebar"] {
     margin-top: 10px;
 }
 
-/* Verdict cards */
 .verdict-toxic {
     background: rgba(192,0,0,0.08);
     border: 2px solid rgba(192,0,0,0.5);
@@ -168,7 +155,6 @@ section[data-testid="stSidebar"] {
 }
 .verdict-sub { font-size: 0.82rem; color: #8892aa; margin-top: 6px; }
 
-/* Label score bar */
 .label-row {
     display: flex;
     align-items: center;
@@ -224,7 +210,6 @@ section[data-testid="stSidebar"] {
 .status-suspicious { background: rgba(237,125,49,0.2); color: #ffaa70; border: 1px solid rgba(237,125,49,0.4); }
 .status-safe     { background: rgba(46,125,50,0.15); color: #6fcf97; border: 1px solid rgba(46,125,50,0.3); }
 
-/* Input styling */
 .stTextArea textarea {
     background: #0f1120 !important;
     border: 1px solid #2a3060 !important;
@@ -238,7 +223,6 @@ section[data-testid="stSidebar"] {
     box-shadow: 0 0 0 2px rgba(46,117,182,0.15) !important;
 }
 
-/* Buttons */
 .stButton > button {
     background: linear-gradient(135deg, #1f4e79, #2e75b6) !important;
     color: white !important;
@@ -255,7 +239,6 @@ section[data-testid="stSidebar"] {
     box-shadow: 0 4px 16px rgba(46,117,182,0.4) !important;
 }
 
-/* Metric cards */
 .metric-card {
     background: #0f1120;
     border: 1px solid #1e2240;
@@ -271,7 +254,6 @@ section[data-testid="stSidebar"] {
 }
 .metric-label { font-size: 0.75rem; color: #6b7a9e; margin-top: 2px; }
 
-/* Section card */
 .section-card {
     background: #0f1120;
     border: 1px solid #1e2240;
@@ -280,7 +262,6 @@ section[data-testid="stSidebar"] {
     margin-bottom: 16px;
 }
 
-/* Batch table */
 .batch-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .batch-table th {
     background: #1a1f35;
@@ -296,7 +277,6 @@ section[data-testid="stSidebar"] {
 .batch-table tr:last-child td { border-bottom: none; }
 .batch-table tr:hover td { background: rgba(255,255,255,0.02); }
 
-/* Tab styling */
 .stTabs [data-baseweb="tab-list"] {
     background: #0f1120;
     border-radius: 10px;
@@ -316,7 +296,6 @@ section[data-testid="stSidebar"] {
     color: #4ba3c7 !important;
 }
 
-/* Info box */
 .info-box {
     background: rgba(46,117,182,0.07);
     border: 1px solid rgba(46,117,182,0.2);
@@ -385,25 +364,26 @@ def predict(texts: list, model, tokenizer) -> np.ndarray:
         probs = torch.sigmoid(logits).cpu().numpy()
     return probs
 
-def get_status(label: str, score: float) -> str:
-    thr = THRESHOLDS[label]
-    if score >= thr:               return "toxic"
-    if score >= thr * SUSPICIOUS_RATIO: return "suspicious"
+def get_status(score: float) -> str:
+    """Uniform 0.5 threshold for all labels."""
+    if score >= THRESHOLD:
+        return "toxic"
+    if score >= THRESHOLD * SUSPICIOUS_RATIO:
+        return "suspicious"
     return "safe"
 
 # ── Label Bars HTML ───────────────────────────────────────────────────────────
 def render_label_bars(prob_dict: dict) -> str:
-    COLOR = {"toxic": "#c00000", "suspicious": "#ed7d31", "safe": "#2e7d32"}
+    COLOR        = {"toxic": "#c00000", "suspicious": "#ed7d31", "safe": "#2e7d32"}
     STATUS_LABEL = {"toxic": "🔴 Toxic", "suspicious": "🟠 Suspicious", "safe": "🟢 Safe"}
 
     rows = ""
     for lbl in LABEL_COLS:
         score  = prob_dict[lbl]
-        status = get_status(lbl, score)
-        thr    = THRESHOLDS[lbl]
+        status = get_status(score)
         color  = COLOR[status]
         bar_w  = min(score * 100, 100)
-        thr_pct = thr * 100
+        thr_pct = THRESHOLD * 100   # always 50%
 
         rows += f"""
         <div class="label-row">
@@ -429,15 +409,15 @@ with st.sidebar:
     st.markdown("**Model Info**")
     st.markdown(f"""
     <div class="metric-card" style="margin-bottom:8px;">
-        <div class="metric-val">0.9849</div>
+        <div class="metric-val">0.9839</div>
         <div class="metric-label">ROC-AUC (macro)</div>
     </div>
     <div class="metric-card" style="margin-bottom:8px;">
-        <div class="metric-val">0.6179</div>
+        <div class="metric-val">0.5229</div>
         <div class="metric-label">F1 (macro)</div>
     </div>
     <div class="metric-card" style="margin-bottom:8px;">
-        <div class="metric-val">0.0297</div>
+        <div class="metric-val">0.0504</div>
         <div class="metric-label">Hamming Loss</div>
     </div>
     """, unsafe_allow_html=True)
@@ -457,21 +437,24 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("**Labels & Thresholds**")
-    for lbl in LABEL_COLS:
-        thr = THRESHOLDS[lbl]
-        st.markdown(f"""
-        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.8rem;border-bottom:1px solid #1a1f35;">
-            <span style="color:#c8d0e4;">{LABEL_EMOJI[lbl]} {lbl}</span>
-            <span style="font-family:'Space Mono',monospace;color:#4ba3c7;">{thr:.0%}</span>
-        </div>""", unsafe_allow_html=True)
+    st.markdown("**Decision Threshold**")
+    st.markdown(f"""
+    <div class="info-box">
+        All 6 labels use a uniform threshold of
+        <b style="color:#4ba3c7;font-family:'Space Mono',monospace;">0.50</b>
+        — consistent with training-time evaluation.<br><br>
+        🔴 <b>Toxic</b> if score ≥ 0.50<br>
+        🟠 <b>Suspicious</b> if score ≥ 0.25<br>
+        🟢 <b>Safe</b> if score &lt; 0.25
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("""
     <div style="font-size:0.72rem;color:#4a5168;padding-top:4px;">
-        Matthew Fitch Aurick<br>
-        Jayson Prasada Siswoyo<br>
-        Evan Chastya Pahan<br><br>
+        Matthew Fitch Aurick · 2802389922<br>
+        Jayson Prasada Siswoyo · 2802389260<br>
+        Evan Chastya Pahan · 2802394185<br><br>
         Bina Nusantara University · 2025/2026
     </div>
     """, unsafe_allow_html=True)
@@ -481,7 +464,7 @@ st.markdown("""
 <div class="app-header">
     <h1>🛡️ Auto-Moderator</h1>
     <p class="subtitle">Multi-label Toxicity Classifier — Jigsaw Dataset · 6 Categories</p>
-    <span class="badge">⚡ Powered by DistilBERT · ROC-AUC 0.9849 ✅</span>
+    <span class="badge">⚡ Powered by DistilBERT · ROC-AUC 0.9839 ✅ · Threshold 0.50</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -494,7 +477,7 @@ if load_error:
     st.markdown("""
     <div class="info-box">
         <b>How to fix:</b><br>
-        1. Train the model using the notebook (<code>nlp_group11_fixed.ipynb</code>, Section 3.3)<br>
+        1. Train the model using the notebook (<code>NLP_Kelompok_11__7_.ipynb</code>, Section 3.3)<br>
         2. Place <code>distilbert_model.pt</code> in the <code>models/</code> folder next to <code>app.py</code><br>
         3. Or set the environment variable: <code>MODEL_BASE_DIR=/path/to/your/output</code>
     </div>
@@ -517,7 +500,6 @@ with tab1:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown("#### 📝 Enter Comment")
 
-        # Callback functions for buttons
         def clear_text():
             st.session_state["single_input"] = ""
 
@@ -567,11 +549,10 @@ with tab1:
                 with st.spinner("Analyzing..."):
                     probs      = predict([user_input.strip()], model, tokenizer)[0]
                     prob_dict  = dict(zip(LABEL_COLS, probs.tolist()))
-                    statuses   = {lbl: get_status(lbl, prob_dict[lbl]) for lbl in LABEL_COLS}
+                    statuses   = {lbl: get_status(prob_dict[lbl]) for lbl in LABEL_COLS}
                     is_toxic   = any(s == "toxic"      for s in statuses.values())
                     is_sus     = any(s == "suspicious" for s in statuses.values())
 
-                    # Verdict
                     if is_toxic:
                         flagged = [lbl for lbl in LABEL_COLS if statuses[lbl] == "toxic"]
                         st.markdown(f"""
@@ -596,17 +577,15 @@ with tab1:
                             <div class="verdict-sub">No toxicity detected across all 6 labels</div>
                         </div>""", unsafe_allow_html=True)
 
-                    # Label bars
                     st.markdown('<div style="margin-top:16px;">', unsafe_allow_html=True)
                     bars_html = render_label_bars(prob_dict)
                     st.markdown(f'<div class="section-card" style="padding:12px 16px;">{bars_html}</div>',
                                 unsafe_allow_html=True)
 
-                    # Threshold note
                     st.markdown("""
                     <div class="info-box" style="margin-top:8px;">
-                        ℹ️ Vertical bar (│) in each row marks the decision threshold.
-                        Rare labels use lower thresholds to reduce false negatives.
+                        ℹ️ Vertical bar (│) marks the 0.50 decision threshold — uniform across all labels.
+                        🔴 ≥ 0.50 · 🟠 ≥ 0.25 · 🟢 &lt; 0.25
                     </div>""", unsafe_allow_html=True)
                     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -626,7 +605,7 @@ with tab2:
     st.markdown("#### 📋 Batch Classification")
     st.markdown("""
     <div class="info-box">
-        Enter one comment per line. Each comment will be classified independently across all 6 toxicity labels.
+        Enter one comment per line. Each comment will be classified independently across all 6 toxicity labels using a uniform 0.50 threshold.
     </div>
     """, unsafe_allow_html=True)
 
@@ -658,11 +637,10 @@ with tab2:
             with st.spinner(f"Classifying {len(lines)} comments..."):
                 probs = predict(lines, model, tokenizer)
 
-            # Summary stats
             verdicts = []
             for prob_row in probs:
-                sts = [get_status(lbl, float(prob_row[j])) for j, lbl in enumerate(LABEL_COLS)]
-                if "toxic" in sts:       verdicts.append("toxic")
+                sts = [get_status(float(prob_row[j])) for j in range(len(LABEL_COLS))]
+                if "toxic" in sts:        verdicts.append("toxic")
                 elif "suspicious" in sts: verdicts.append("suspicious")
                 else:                     verdicts.append("safe")
 
@@ -682,7 +660,6 @@ with tab2:
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # Build table
             COLOR = {"toxic": "#ff6b6b", "suspicious": "#ffaa70", "safe": "#6fcf97"}
             ICON  = {"toxic": "🔴", "suspicious": "🟠", "safe": "🟢"}
 
@@ -703,7 +680,7 @@ with tab2:
                 score_cells = ""
                 for j, lbl in enumerate(LABEL_COLS):
                     v   = float(prob_row[j])
-                    st_ = get_status(lbl, v)
+                    st_ = get_status(v)
                     c   = COLOR[st_]
                     bold = "font-weight:600;" if st_ != "safe" else ""
                     score_cells += f'<td style="text-align:center;font-family:Space Mono,monospace;font-size:0.8rem;color:{c};{bold}">{v:.0%}</td>'
@@ -728,33 +705,31 @@ with tab2:
 
             st.markdown("""
             <div class="info-box" style="margin-top:12px;">
-                Scores shown are per-label probabilities. Each label uses its own threshold
-                (see sidebar). 🔴 = ≥ threshold · 🟠 = ≥ ½ threshold · 🟢 = safe
+                Scores shown are per-label probabilities. Uniform threshold 0.50 for all labels.
+                🔴 = ≥ 0.50 (Toxic) · 🟠 = ≥ 0.25 (Suspicious) · 🟢 = &lt; 0.25 (Safe)
             </div>""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # TAB 3 — Reference
 # ════════════════════════════════════════════════════════════
 with tab3:
-    st.markdown("#### 📖 Label Definitions & Thresholds")
+    st.markdown("#### 📖 Label Definitions & Classification Logic")
 
     col_a, col_b = st.columns(2)
 
     with col_a:
         st.markdown("**Toxicity Labels**")
         for lbl in LABEL_COLS:
-            thr = THRESHOLDS[lbl]
-            sus = thr * SUSPICIOUS_RATIO
             st.markdown(f"""
             <div class="section-card" style="margin-bottom:10px;padding:14px 18px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:1rem;">{LABEL_EMOJI[lbl]} <b style="color:#e8ecf4;">{lbl}</b></span>
-                    <span style="font-family:'Space Mono',monospace;color:#4ba3c7;font-size:0.85rem;">thr={thr:.0%}</span>
+                    <span style="font-family:'Space Mono',monospace;color:#4ba3c7;font-size:0.85rem;">thr=0.50</span>
                 </div>
                 <div style="font-size:0.8rem;color:#6b7a9e;margin-top:6px;">{LABEL_DESC[lbl]}</div>
                 <div style="font-size:0.75rem;margin-top:6px;">
-                    <span style="color:#ff6b6b;">🔴 Toxic if ≥ {thr:.0%}</span> ·
-                    <span style="color:#ffaa70;">🟠 Suspicious if ≥ {sus:.0%}</span>
+                    <span style="color:#ff6b6b;">🔴 Toxic if ≥ 50%</span> ·
+                    <span style="color:#ffaa70;">🟠 Suspicious if ≥ 25%</span>
                 </div>
             </div>""", unsafe_allow_html=True)
 
@@ -766,67 +741,77 @@ with tab3:
                 <tr style="border-bottom:1px solid #1e2240;">
                     <td style="padding:10px 8px;color:#ff6b6b;font-size:1.1rem;">🔴</td>
                     <td style="padding:10px 8px;color:#e8ecf4;font-weight:600;">Toxic</td>
-                    <td style="padding:10px 8px;color:#8892aa;">At least 1 label ≥ its threshold</td>
+                    <td style="padding:10px 8px;color:#8892aa;">At least 1 label score ≥ 0.50</td>
                 </tr>
                 <tr style="border-bottom:1px solid #1e2240;">
                     <td style="padding:10px 8px;color:#ffaa70;font-size:1.1rem;">🟠</td>
                     <td style="padding:10px 8px;color:#e8ecf4;font-weight:600;">Suspicious</td>
-                    <td style="padding:10px 8px;color:#8892aa;">At least 1 label ≥ ½ threshold, none ≥ threshold</td>
+                    <td style="padding:10px 8px;color:#8892aa;">At least 1 label score ≥ 0.25, none ≥ 0.50</td>
                 </tr>
                 <tr>
                     <td style="padding:10px 8px;color:#6fcf97;font-size:1.1rem;">🟢</td>
                     <td style="padding:10px 8px;color:#e8ecf4;font-weight:600;">Safe</td>
-                    <td style="padding:10px 8px;color:#8892aa;">All labels below ½ threshold</td>
+                    <td style="padding:10px 8px;color:#8892aa;">All label scores &lt; 0.25</td>
                 </tr>
             </table>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("**Why Per-Label Thresholds?**")
+        st.markdown("**Why Uniform 0.50 Threshold?**")
         st.markdown("""
         <div class="section-card">
             <p style="font-size:0.83rem;color:#8892aa;line-height:1.6;margin:0;">
-                The dataset is severely imbalanced — rare labels like <b style="color:#c8d0e4;">threat</b> (0.30%)
-                and <b style="color:#c8d0e4;">identity_hate</b> (0.88%) need lower thresholds
-                to avoid missing real instances (reducing false negatives).<br><br>
-                A single 0.5 threshold across all labels would under-detect rare categories.
-                Per-label tuning balances precision and recall for each class individually.
+                All four benchmarked models were evaluated at a uniform
+                <b style="color:#4ba3c7;">0.50 decision threshold</b> across all six labels,
+                consistent with standard multi-label classification practice.<br><br>
+                This ensures that the displayed confidence scores are directly comparable
+                to the reported evaluation metrics (ROC-AUC, F1, Precision, Recall, Hamming Loss)
+                computed in the training notebook.<br><br>
+                The <b style="color:#c8d0e4;">Suspicious</b> zone (0.25–0.50) surfaces
+                borderline predictions for human review without triggering an automated flag.
             </p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("**Model Performance Summary**")
+        # Corrected final evaluation metrics (threshold=0.5, from notebook _7_)
         perf_data = {
-            "DistilBERT":        {"ROC-AUC": 0.9849, "F1": 0.6179, "Hamming": 0.0297},
-            "RoBERTa":           {"ROC-AUC": 0.9839, "F1": 0.6222, "Hamming": 0.0312},
-            "LinearSVC":         {"ROC-AUC": 0.9747, "F1": 0.5401, "Hamming": 0.0267},
-            "Logistic Regression": {"ROC-AUC": 0.9746, "F1": 0.4725, "Hamming": 0.0502},
+            "DistilBERT":          {"ROC-AUC": 0.9839, "F1": 0.5229, "Prec.": 0.3747, "Recall": 0.9068, "Hamming": 0.0504},
+            "RoBERTa":             {"ROC-AUC": 0.9826, "F1": 0.5031, "Prec.": 0.3551, "Recall": 0.9224, "Hamming": 0.0526},
+            "LinearSVC":           {"ROC-AUC": 0.9747, "F1": 0.5401, "Prec.": 0.5848, "Recall": 0.5142, "Hamming": 0.0267},
+            "Logistic Regression": {"ROC-AUC": 0.9746, "F1": 0.4725, "Prec.": 0.3415, "Recall": 0.8445, "Hamming": 0.0502},
         }
         table_rows = ""
         for name, m in perf_data.items():
-            bold = "font-weight:600;" if name == "DistilBERT" else ""
+            bold  = "font-weight:600;" if name == "DistilBERT" else ""
             color = "#4ba3c7" if name == "DistilBERT" else "#c8d0e4"
             table_rows += f"""
             <tr style="border-bottom:1px solid #1a1f35;">
-                <td style="padding:8px;font-size:0.82rem;color:{color};{bold}">{name}</td>
-                <td style="padding:8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.8rem;color:#4ba3c7;">{m['ROC-AUC']}</td>
-                <td style="padding:8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.8rem;color:#c8d0e4;">{m['F1']}</td>
-                <td style="padding:8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.8rem;color:#8892aa;">{m['Hamming']}</td>
+                <td style="padding:6px 8px;font-size:0.8rem;color:{color};{bold}">{name}</td>
+                <td style="padding:6px 8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.78rem;color:#4ba3c7;">{m['ROC-AUC']}</td>
+                <td style="padding:6px 8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.78rem;color:#c8d0e4;">{m['F1']}</td>
+                <td style="padding:6px 8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.78rem;color:#c8d0e4;">{m['Prec.']}</td>
+                <td style="padding:6px 8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.78rem;color:#c8d0e4;">{m['Recall']}</td>
+                <td style="padding:6px 8px;text-align:center;font-family:'Space Mono',monospace;font-size:0.78rem;color:#8892aa;">{m['Hamming']}</td>
             </tr>"""
 
         st.markdown(f"""
         <div class="section-card" style="padding:12px;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
                 <thead>
                     <tr style="border-bottom:2px solid #1e2240;">
-                        <th style="padding:8px;text-align:left;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.75rem;">Model</th>
-                        <th style="padding:8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.75rem;">ROC-AUC</th>
-                        <th style="padding:8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.75rem;">F1</th>
-                        <th style="padding:8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.75rem;">Hamming</th>
+                        <th style="padding:6px 8px;text-align:left;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.72rem;">Model</th>
+                        <th style="padding:6px 8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.72rem;">ROC-AUC</th>
+                        <th style="padding:6px 8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.72rem;">F1</th>
+                        <th style="padding:6px 8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.72rem;">Prec.</th>
+                        <th style="padding:6px 8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.72rem;">Recall</th>
+                        <th style="padding:6px 8px;text-align:center;color:#6b7a9e;font-family:'Space Mono',monospace;font-size:0.72rem;">Hamming</th>
                     </tr>
                 </thead>
                 <tbody>{table_rows}</tbody>
             </table>
-            <div style="font-size:0.72rem;color:#4a5168;margin-top:8px;">★ App uses DistilBERT (best ROC-AUC). All models meet target > 0.90 ✅</div>
+            <div style="font-size:0.7rem;color:#4a5168;margin-top:8px;">
+                ★ App uses DistilBERT (best ROC-AUC). All models meet target &gt; 0.90 ✅ · Threshold = 0.50 for all
+            </div>
         </div>
         """, unsafe_allow_html=True)
