@@ -10,7 +10,7 @@ auto_moderator_app/
 ├── requirements.txt     ← Python dependencies
 ├── README.md            ← This file
 └── models/
-    └── distilbert_model.pt   ← (letakkan checkpoint di sini)
+    └── distilbert_model.pt   ← (letakkan model di sini)
 ```
 
 ## Setup & Menjalankan
