@@ -21,15 +21,15 @@ pip install -r requirements.txt
 ```
 
 ### 2. Letakkan model checkpoint
-Copy file `distilbert_model.pt` dari hasil training notebook (output di `Model 3/distilbert_model.pt`) ke folder `models/`:
+Copy file `distilbert_model.pt` dari hasil training notebook (output di `Model Training/Training Model.ipynb`) ke folder `models/`:
 ```bash
 mkdir models
-cp /path/to/output/Model\ 3/distilbert_model.pt models/
+cp /path/to/distilbert_model.pt models/
 ```
 
 Atau set environment variable jika model ada di lokasi lain:
 ```bash
-export MODEL_BASE_DIR=/path/to/your/output/folder
+export MODEL_BASE_DIR=/path/to/your/models/folder
 ```
 
 ### 3. Jalankan aplikasi
@@ -62,20 +62,30 @@ Aplikasi akan berjalan di `http://localhost:8501`
 
 - **Architecture:** DistilBERT (`distilbert-base-uncased`) + Dropout(0.3) + Linear(768→6) + Sigmoid
 - **Training:** BCEWithLogitsLoss · AdamW lr=2e-5 · 3 epochs · batch=32
-- **Test Macro ROC-AUC:** 0.9851 ✅ (target > 0.90)
-- **Test Macro F1:** 0.6162
-- **Hamming Loss:** 0.030008
+- **Validation Macro ROC-AUC:** 0.9839 ✅ (target > 0.90)
+- **Validation Macro F1:** 0.5229
+- **Hamming Loss:** 0.0504
 
-## Per-Label Thresholds
+## Decision Threshold
 
-| Label | Threshold | Alasan |
-|---|---|---|
-| toxic | 40% | Label utama, threshold moderat |
-| severe_toxic | 30% | Sangat langka (1%), perlu threshold rendah |
-| obscene | 40% | Cukup umum |
-| threat | 25% | Paling langka (0.30%), threshold agresif |
-| insult | 40% | Cukup umum |
-| identity_hate | 25% | Sangat langka (0.88%), threshold agresif |
+Semua 6 label menggunakan **uniform threshold 0.50**, konsisten dengan evaluasi saat training.
+
+| Verdict | Kondisi |
+|---|---|
+| 🔴 Toxic | Minimal 1 label score ≥ 0.50 |
+| 🟠 Suspicious | Minimal 1 label score ≥ 0.25, tidak ada yang ≥ 0.50 |
+| 🟢 Safe | Semua label score < 0.25 |
+
+## Performa Semua Model
+
+| Model | ROC-AUC | F1 | Precision | Recall | Hamming |
+|---|---|---|---|---|---|
+| **DistilBERT** ★ | **0.9839** | 0.5229 | 0.3747 | 0.9068 | 0.0504 |
+| RoBERTa | 0.9826 | 0.5031 | 0.3551 | 0.9224 | 0.0526 |
+| LinearSVC | 0.9747 | 0.5401 | 0.5848 | 0.5142 | 0.0267 |
+| Logistic Regression | 0.9746 | 0.4725 | 0.3415 | 0.8445 | 0.0502 |
+
+★ App menggunakan DistilBERT (ROC-AUC tertinggi). Semua model memenuhi target > 0.90 ✅
 
 ## Team
 
